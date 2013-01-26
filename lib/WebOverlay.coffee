@@ -17,14 +17,14 @@ inject_jquery = (page) ->
   jquery_path = (system.args[0].split '/')[0...-1].join("/") + "/../lib/jquery.min.js"
   error "failed to inject jQuery" unless page.injectJs jquery_path
 
-annotate = (page, rule) ->
+overlay = (page, rule) ->
   page.evaluate (rule) ->
     selector = rule.selector
     label = rule.label
     type = rule.type || "all"
 
-    addAnnotate = (left, top, width, height, label) ->
-      console.log left, top, width, height, label
+    addOverlay = (left, top, width, height, label) ->
+      console.log "appending overlay: #{label}, (#{left}, #{top}), #{width}x#{height}"
       $base = $ '<div>'
       $base.css
         zIndex: 10000
@@ -52,6 +52,8 @@ annotate = (page, rule) ->
       ($ document.body).append $base
 
     handlers =
+
+      # add overlays to each elements
       all: (selector, label) ->
         $targets = ($ selector)
         return unless $targets.length
@@ -61,8 +63,9 @@ annotate = (page, rule) ->
 
           $target = do $target.parent while $target.height() == 0
           offset = do $target.offset
-          addAnnotate offset.left, offset.top, do $target.width, do $target.height, label
+          addOverlay offset.left, offset.top, do $target.width, do $target.height, label
 
+      # wrap all elements in an overlay
       wrap: (selector, label) ->
         $targets = ($ selector)
         return unless $targets.length
@@ -92,12 +95,12 @@ annotate = (page, rule) ->
         top = y_from
         width = x_to - x_from
         height = y_to - y_from
-        addAnnotate left, top, width, height, label
+        addOverlay left, top, width, height, label
 
     handler = handlers[type]
 
     unless handler
-      console.log "error: unrecognized handler type: #{type}"
+      console.log "error: unrecognized type: #{type}"
       return
 
     handler selector, label
@@ -110,27 +113,35 @@ render = (page, output_path) ->
 
 # config:
 #   url
-#   annotates
+#   overlays
 run = (config, output_path) ->
 
   url       = config.url
   error "url required" unless url?
-  annotates = config.annotates
-  error "annotates required" unless annotates?
+  overlays = config.overlays
+  error "overlays required" unless overlays?
 
   page = do create_page
-
-  # console.log page.libraryPath
-  # do phantom.exit
 
   console.log "open #{url}"
   page.open url, (status) ->
     error "Unable to load the address!" if status isnt "success"
     console.log "open #{url} done"
     inject_jquery page
-    annotate page, rule for rule in annotates
+    overlay page, rule for rule in overlays
     render page, output_path
     do phantom.exit
 
+loadConfig = (config_path) ->
+  fs = require "fs"
+  file = fs.open config_path, "r"
+  content = do file.read
+  try
+    JSON.parse content
+  catch error
+    # eval allows last comma
+    eval "(#{content})"
+
 module.exports =
   run: run
+  loadConfig: loadConfig
