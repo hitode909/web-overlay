@@ -1,6 +1,6 @@
 # WebOverlay
 
-Annotate A Web Page and Take a Screenshot.
+Annotate A Web Page and Take a Screenshot with PhantomJS.
 
 ```
 URL + Overlays(CSS Selectors + Labels) => Screenshot with annotation overlays
