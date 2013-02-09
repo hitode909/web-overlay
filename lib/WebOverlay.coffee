@@ -23,6 +23,21 @@ overlay = (page, rule) ->
     label = rule.label
     type = rule.type || "all"
 
+    isCollision = ($a, $b) ->
+      a_position = do $a.offset
+      a_left = a_position.left
+      a_right = a_left + do $a.width
+      a_top = a_position.top
+      a_bottom = a_top + do $a.height
+
+      b_position = do $b.offset
+      b_left = b_position.left
+      b_right = b_left + do $b.width
+      b_top = b_position.top
+      b_bottom = b_top + do $b.height
+
+      (a_right - b_left) * (a_left - b_right) < 0 && (a_bottom - b_top) * (a_top - b_bottom) < 0
+
     addOverlay = (left, top, width, height, label) ->
       console.log "appending overlay: #{label}, (#{left}, #{top}), #{width}x#{height}"
       $base = $ '<div>'
@@ -37,6 +52,8 @@ overlay = (page, rule) ->
         height: height
 
       $label = $ '<span>'
+      $label.attr
+        'data-web-overlay-label': 1
       $label.text label
       $label.css
         position: 'absolute'
@@ -49,7 +66,29 @@ overlay = (page, rule) ->
         fontSize: '12px'
 
       $base.append $label
+
+      $labels = $ '[data-web-overlay-label="1"]'
+
       ($ document.body).append $base
+
+      avoidCollision $base, $label, $labels
+
+    isCollisionToSet = ($a, $bs) ->
+      for b in $bs
+        return true if isCollision $a, $ b
+
+      false
+
+    # expand base to avoid label collision
+    avoidCollision = ($base, $label, $labels) ->
+      tryCount = 0
+      while ++tryCount < 1000
+        return unless isCollisionToSet $label, $labels
+        $base.css
+          left: (parseInt $base.css 'left') - 1,
+          top: (parseInt $base.css 'top') - 1,
+          width: (parseInt $base.css 'width') + 2,
+          height: (parseInt $base.css 'height') + 2,
 
     handlers =
 
